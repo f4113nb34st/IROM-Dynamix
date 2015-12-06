@@ -1,2 +1,2 @@
 # IROM-Dynamix
-IROM Dynamix Module
+Iron Omega Dynamix Module
