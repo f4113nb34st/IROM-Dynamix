@@ -1,6 +1,7 @@
 ﻿namespace IROM.Dynamix
 {
 	using System;
+	using IROM.Util;
 	
 	/// <summary>
 	/// Dynamix int value class.

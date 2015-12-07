@@ -56,7 +56,7 @@
 		/// Returns an enumeration of listeners in this source.
 		/// </summary>
 		/// <returns>The enumeration.</returns>
-		protected IEnumerable<Action> GetListeners()
+		protected internal IEnumerable<Action> GetListeners()
 		{
 			HandleNode prev;
 			HandleNode node = root;
