@@ -184,6 +184,16 @@
         {
             return new DVec3D(vec.X, vec.Y, 0);
         }
+        
+        /// <summary>
+        /// Explicit cast to <see cref="Point2D"/>. Fills missing data with 0's.
+        /// </summary>
+        /// <param name="vec">The vec to cast.</param>
+        /// <returns>The resulting vec.</returns>
+        public static explicit operator Point2D(DVec2D vec)
+        {
+        	return (Point2D)vec.Value;
+        }
 
 		/// <summary>
         /// Negates this vec.

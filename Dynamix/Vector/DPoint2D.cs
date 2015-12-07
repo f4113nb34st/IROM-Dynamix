@@ -117,7 +117,7 @@
         }
         
         /// <summary>
-        /// Explicit cast to <see cref="DPoint1D"/>. Drops extra data.
+        /// Implicit cast to <see cref="DPoint1D"/>. Drops extra data.
         /// </summary>
         /// <param name="point">The point to cast.</param>
         /// <returns>The resulting point.</returns>
@@ -127,13 +127,23 @@
         }
 
         /// <summary>
-        /// Explicit cast to <see cref="DPoint3D"/>. Fills missing data with 0's.
+        /// Implicit cast to <see cref="DPoint3D"/>. Fills missing data with 0's.
         /// </summary>
         /// <param name="point">The point to cast.</param>
         /// <returns>The resulting point.</returns>
         public static implicit operator DPoint3D(DPoint2D point)
         {
             return new DPoint3D(point.X, point.Y, 0);
+        }
+        
+        /// <summary>
+        /// Implicit cast to <see cref="Vec2D"/>. Fills missing data with 0's.
+        /// </summary>
+        /// <param name="vec">The vec to cast.</param>
+        /// <returns>The resulting vec.</returns>
+        public static implicit operator Vec2D(DPoint2D vec)
+        {
+        	return vec.Value;
         }
 
 		/// <summary>
