@@ -168,6 +168,17 @@
         {
             return new DPoint2D(point.X * point2.X, point.Y * point2.Y);
         }
+        
+        /// <summary>
+        /// Multiplies the given point by the given value.
+        /// </summary>
+        /// <param name="point">The point.</param>
+        /// <param name="value">The value.</param>
+        /// <returns>The product point.</returns>
+        public static DPoint2D operator *(DPoint2D point, DVec2D value)
+        {
+        	return new DPoint2D((DInt)(point.X * value.X), (DInt)(point.Y * value.Y));
+        }
 
         /// <summary>
         /// Divides the given points.
@@ -178,6 +189,17 @@
         public static DPoint2D operator /(DPoint2D point, DPoint2D point2)
         {
             return new DPoint2D(point.X / point2.X, point.Y / point2.Y);
+        }
+        
+        /// <summary>
+        /// Divides the given point by the given value.
+        /// </summary>
+        /// <param name="point">The point.</param>
+        /// <param name="value">The value.</param>
+        /// <returns>The quotient point.</returns>
+        public static DPoint2D operator /(DPoint2D point, DVec2D value)
+        {
+        	return new DPoint2D((DInt)(point.X / value.X), (DInt)(point.Y / value.Y));
         }
         
         /// <summary>

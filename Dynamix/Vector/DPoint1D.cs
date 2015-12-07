@@ -147,6 +147,17 @@
         {
             return new DPoint1D(point.X * point2.X);
         }
+        
+        /// <summary>
+        /// Multiplies the given point by the given value.
+        /// </summary>
+        /// <param name="point">The point.</param>
+        /// <param name="value">The value.</param>
+        /// <returns>The product point.</returns>
+        public static DPoint1D operator *(DPoint1D point, DVec1D value)
+        {
+        	return new DPoint1D((DInt)(point.X * value.X));
+        }
 
         /// <summary>
         /// Divides the given points.
@@ -157,6 +168,17 @@
         public static DPoint1D operator /(DPoint1D point, DPoint1D point2)
         {
             return new DPoint1D(point.X / point2.X);
+        }
+        
+        /// <summary>
+        /// Divides the given point by the given value.
+        /// </summary>
+        /// <param name="point">The point.</param>
+        /// <param name="value">The value.</param>
+        /// <returns>The quotient point.</returns>
+        public static DPoint1D operator /(DPoint1D point, DVec1D value)
+        {
+        	return new DPoint1D((DInt)(point.X / value.X));
         }
         
         /// <summary>

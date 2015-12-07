@@ -1,6 +1,7 @@
 ﻿namespace IROM.Dynamix
 {
 	using System;
+	using IROM.Util;
 	
 	/// <summary>
 	/// Dynamix boolean value class.
@@ -68,6 +69,17 @@
 		public static DBool operator !=(DBool ele, DElement<bool> ele2)
 		{
 			return !(ele == ele2);
+		}
+		
+		static DBool()
+		{
+			AutoConfig.SetParser<DBool>((string str, out DBool result) =>
+            {
+            	bool temp;
+            	bool success = bool.TryParse(str, out temp);
+            	result = temp;
+            	return success;
+            });
 		}
 	}
 }

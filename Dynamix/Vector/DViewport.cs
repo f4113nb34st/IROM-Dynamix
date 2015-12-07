@@ -8,15 +8,45 @@
 	/// </summary>
 	public class DViewport : DElement<Viewport>
 	{
+		//backing vars
+		private DVec2D min;
+		private DVec2D max;
+		
 		/// <summary>
 		/// The <see cref="DViewport"/> minimum coordinates (inclusive).
 		/// </summary>
-		public DVec2D Min;
+		public DVec2D Min
+		{
+			get
+        	{
+        		return min;
+        	}
+        	set
+        	{
+        		if(min != null) min.Unsubscribe(OnChange);
+        		min = value;
+        		min.Subscribe(OnChange);
+        		OnChange();
+        	}
+		}
 		
 		/// <summary>
 		/// The <see cref="DViewport"/> maximum coordinates (exclusive).
 		/// </summary>
-		public DVec2D Max;
+		public DVec2D Max
+		{
+			get
+        	{
+        		return max;
+        	}
+        	set
+        	{
+        		if(max != null) max.Unsubscribe(OnChange);
+        		max = value;
+        		max.Subscribe(OnChange);
+        		OnChange();
+        	}
+		}
 		
 		/// <summary>
 		/// The <see cref="DViewport"/> position.
@@ -110,6 +140,16 @@
         	Max = max;
         }
         
+        protected override void Update()
+		{
+			Value = new Viewport(min.Value, max.Value);
+		}
+		
+		protected internal override DElement<Viewport> GetExtension()
+		{
+			return new DViewport(new DVec2D(() => Value.Min.X, () => Value.Min.Y), new DVec2D(() => Value.Max.X, () => Value.Max.Y));
+		}
+        
         /// <summary>
         /// Returns true if this <see cref="DViewport"/> is a valid, space-filling view.
         /// </summary>
@@ -193,7 +233,7 @@
         /// <returns>The resized view.</returns>
         public static DViewport operator *(DViewport view, DDouble val)
         {
-        	DVec2D middle = (view.Max + view.Min) / 2;
+        	DVec2D middle = (view.Max + view.Min) / (DDouble)2.0;
         	view.Min -= middle;
         	view.Min *= val;
         	view.Min += middle;
@@ -211,7 +251,7 @@
         /// <returns>The resized view.</returns>
         public static DViewport operator /(DViewport view, DDouble val)
         {
-        	DVec2D middle = (view.Max + view.Min) / 2;
+        	DVec2D middle = (view.Max + view.Min) / (DDouble)2.0;
         	view.Min -= middle;
         	view.Min /= val;
         	view.Min += middle;

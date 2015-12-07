@@ -1,6 +1,7 @@
 ﻿namespace IROM.Dynamix
 {
 	using System;
+	using IROM.Util;
 	
 	/// <summary>
 	/// Dynamix double value class.
@@ -98,6 +99,17 @@
 		public static DBool operator <=(DDouble ele, DElement<double> ele2)
 		{
 			return (DBool)(() => ele.Value <= ele2.Value);
+		}
+		
+		static DDouble()
+		{
+			AutoConfig.SetParser<DDouble>((string str, out DDouble result) =>
+            {
+            	double temp;
+            	bool success = double.TryParse(str, out temp);
+            	result = temp;
+            	return success;
+            });
 		}
 	}
 }

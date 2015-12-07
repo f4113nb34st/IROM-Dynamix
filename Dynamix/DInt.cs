@@ -124,5 +124,16 @@
 		{
 			return (DBool)(() => ele.Value <= ele2.Value);
 		}
+		
+		static DInt()
+		{
+			AutoConfig.SetParser<DInt>((string str, out DInt result) =>
+            {
+            	int temp;
+            	bool success = int.TryParse(str, out temp);
+            	result = temp;
+            	return success;
+            });
+		}
 	}
 }

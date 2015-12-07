@@ -1,6 +1,7 @@
 ﻿namespace IROM.Dynamix
 {
 	using System;
+	using IROM.Util;
 	
 	/// <summary>
 	/// Dynamix string value class.
@@ -38,6 +39,15 @@
 		public static DBool operator !=(DString ele, DElement<string> ele2)
 		{
 			return !(ele == ele2);
+		}
+		
+		static DString()
+		{
+			AutoConfig.SetParser<DString>((string str, out DString result) =>
+            {
+			    result = str;
+            	return true;
+            });
 		}
 	}
 }

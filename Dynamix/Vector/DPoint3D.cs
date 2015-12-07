@@ -189,6 +189,17 @@
         {
             return new DPoint3D(point.X * point2.X, point.Y * point2.Y, point.Z * point2.Z);
         }
+        
+        /// <summary>
+        /// Multiplies the given point by the given value.
+        /// </summary>
+        /// <param name="point">The point.</param>
+        /// <param name="value">The value.</param>
+        /// <returns>The product point.</returns>
+        public static DPoint3D operator *(DPoint3D point, DVec3D value)
+        {
+        	return new DPoint3D((DInt)(point.X * value.X), (DInt)(point.Y * value.Y), (DInt)(point.Z * value.Z));
+        }
 
         /// <summary>
         /// Divides the given points.
@@ -199,6 +210,17 @@
         public static DPoint3D operator /(DPoint3D point, DPoint3D point2)
         {
             return new DPoint3D(point.X / point2.X, point.Y / point2.Y, point.Z / point2.Z);
+        }
+        
+        /// <summary>
+        /// Divides the given point by the given value.
+        /// </summary>
+        /// <param name="point">The point.</param>
+        /// <param name="value">The value.</param>
+        /// <returns>The quotient point.</returns>
+        public static DPoint3D operator /(DPoint3D point, DVec3D value)
+        {
+        	return new DPoint3D((DInt)(point.X / value.X), (DInt)(point.Y / value.Y), (DInt)(point.Z / value.Z));
         }
         
         /// <summary>

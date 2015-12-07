@@ -67,8 +67,8 @@
 		/// </summary>
 		public DPoint2D Size
 		{
-			get{return Max - Min + 1;}
-			set{Max = Min + value - 1;}
+			get{return Max - Min + (DInt)1;}
+			set{Max = Min + value - (DInt)1;}
 		}
 		
 		/// <summary>
@@ -139,6 +139,16 @@
         	Min = min;
         	Max = max;
         }
+        
+        protected override void Update()
+		{
+			Value = new Rectangle(min.Value, max.Value);
+		}
+		
+		protected internal override DElement<Rectangle> GetExtension()
+		{
+			return new DRectangle(new DPoint2D(() => Value.Min.X, () => Value.Min.Y), new DPoint2D(() => Value.Max.X, () => Value.Max.Y));
+		}
         
         /// <summary>
         /// Returns true if this <see cref="DRectangle"/> is a valid, space-filling rectangle.
@@ -243,7 +253,7 @@
         /// <returns>The resized rectangle.</returns>
         public static DRectangle operator *(DRectangle rect, DDouble val)
         {
-        	DPoint2D middle = (rect.Max + rect.Min) / 2.0;
+        	DPoint2D middle = (rect.Max + rect.Min) / (DDouble)2.0;
         	rect.Min -= middle;
         	rect.Min *= val;
         	rect.Min += middle;
@@ -261,7 +271,7 @@
         /// <returns>The resized rectangle.</returns>
         public static DRectangle operator /(DRectangle rect, DDouble val)
         {
-        	DPoint2D middle = (rect.Max + rect.Min) / 2.0;
+        	DPoint2D middle = (rect.Max + rect.Min) / (DDouble)2.0;
         	rect.Min -= middle;
         	rect.Min /= val;
         	rect.Min += middle;

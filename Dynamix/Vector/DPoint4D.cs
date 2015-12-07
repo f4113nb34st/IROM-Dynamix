@@ -200,6 +200,17 @@
         {
             return new DPoint4D(point.X * point2.X, point.Y * point2.Y, point.Z * point2.Z, point.W * point2.W);
         }
+        
+        /// <summary>
+        /// Multiplies the given point by the given value.
+        /// </summary>
+        /// <param name="point">The point.</param>
+        /// <param name="value">The value.</param>
+        /// <returns>The product point.</returns>
+        public static DPoint4D operator *(DPoint4D point, DVec4D value)
+        {
+        	return new DPoint4D((DInt)(point.X * value.X), (DInt)(point.Y * value.Y), (DInt)(point.Z * value.Z), (DInt)(point.W * value.W));
+        }
 
         /// <summary>
         /// Divides the given points.
@@ -210,6 +221,17 @@
         public static DPoint4D operator /(DPoint4D point, DPoint4D point2)
         {
             return new DPoint4D(point.X / point2.X, point.Y / point2.Y, point.Z / point2.Z, point.W / point2.W);
+        }
+        
+        /// <summary>
+        /// Divides the given point by the given value.
+        /// </summary>
+        /// <param name="point">The point.</param>
+        /// <param name="value">The value.</param>
+        /// <returns>The quotient point.</returns>
+        public static DPoint4D operator /(DPoint4D point, DVec4D value)
+        {
+        	return new DPoint4D((DInt)(point.X / value.X), (DInt)(point.Y / value.Y), (DInt)(point.Z / value.Z), (DInt)(point.W / value.W));
         }
         
         /// <summary>
