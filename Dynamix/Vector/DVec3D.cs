@@ -145,6 +145,26 @@
         }
         
         /// <summary>
+        /// Implicit cast from the data type.
+        /// </summary>
+        /// <param name="val">The value to cast.</param>
+        /// <returns>The vec.</returns>
+        public static implicit operator DVec3D(double val)
+        {
+        	return new DVec3D(val, val, val);
+        }
+        
+        /// <summary>
+        /// Implicit cast from the data type.
+        /// </summary>
+        /// <param name="val">The value to cast.</param>
+        /// <returns>The vec.</returns>
+        public static implicit operator DVec3D(int val)
+        {
+        	return new DVec3D(val, val, val);
+        }
+        
+        /// <summary>
         /// Explicit cast to <see cref="DPoint3D"/>.
         /// </summary>
         /// <param name="vec">The vec to cast.</param>

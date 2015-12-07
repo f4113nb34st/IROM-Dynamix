@@ -166,6 +166,26 @@
         }
         
         /// <summary>
+        /// Implicit cast from the data type.
+        /// </summary>
+        /// <param name="val">The value to cast.</param>
+        /// <returns>The vec.</returns>
+        public static implicit operator DVec4D(double val)
+        {
+        	return new DVec4D(val, val, val, val);
+        }
+        
+        /// <summary>
+        /// Implicit cast from the data type.
+        /// </summary>
+        /// <param name="val">The value to cast.</param>
+        /// <returns>The vec.</returns>
+        public static implicit operator DVec4D(int val)
+        {
+        	return new DVec4D(val, val, val, val);
+        }
+        
+        /// <summary>
         /// Explicit cast to <see cref="DPoint4D"/>.
         /// </summary>
         /// <param name="vec">The vec to cast.</param>

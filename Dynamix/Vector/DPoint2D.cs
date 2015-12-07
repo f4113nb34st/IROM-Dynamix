@@ -97,6 +97,16 @@
         }
         
         /// <summary>
+        /// Implicit cast from the data type.
+        /// </summary>
+        /// <param name="val">The value to cast.</param>
+        /// <returns>The point.</returns>
+        public static implicit operator DPoint2D(int val)
+        {
+        	return new DPoint2D(val, val);
+        }
+        
+        /// <summary>
         /// Explicit cast to <see cref="DVec2D"/>.
         /// </summary>
         /// <param name="point">The point to cast.</param>

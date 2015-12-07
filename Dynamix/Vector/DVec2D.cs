@@ -136,6 +136,26 @@
         }
         
         /// <summary>
+        /// Implicit cast from the data type.
+        /// </summary>
+        /// <param name="val">The value to cast.</param>
+        /// <returns>The vec.</returns>
+        public static implicit operator DVec2D(double val)
+        {
+        	return new DVec2D(val, val);
+        }
+        
+        /// <summary>
+        /// Implicit cast from the data type.
+        /// </summary>
+        /// <param name="val">The value to cast.</param>
+        /// <returns>The vec.</returns>
+        public static implicit operator DVec2D(int val)
+        {
+        	return new DVec2D(val, val);
+        }
+        
+        /// <summary>
         /// Explicit cast to <see cref="DPoint2D"/>.
         /// </summary>
         /// <param name="vec">The vec to cast.</param>
