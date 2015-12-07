@@ -36,6 +36,11 @@
 			return (DARGB)(() => value);
 		}
 		
+		public static implicit operator DARGB(RGB value)
+		{
+			return (DARGB)(() => value);
+		}
+		
 		public static DARGB operator +(DARGB ele, DARGB ele2)
 		{
 			return (DARGB)(() => ele.Value + ele2.Value);

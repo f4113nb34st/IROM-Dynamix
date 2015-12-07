@@ -89,6 +89,16 @@
         /// <summary>
         /// Implicit cast from the data type.
         /// </summary>
+        /// <param name="point">The point to cast.</param>
+        /// <returns>The value.</returns>
+        public static implicit operator DPoint2D(Point2D point)
+        {
+        	return new DPoint2D(() => point.X, () => point.Y);
+        }
+        
+        /// <summary>
+        /// Implicit cast from the data type.
+        /// </summary>
         /// <param name="val">The value to cast.</param>
         /// <returns>The point.</returns>
         public static implicit operator DPoint2D(DInt val)

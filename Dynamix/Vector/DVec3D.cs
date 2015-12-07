@@ -133,7 +133,27 @@
         {
         	return this / Length();
         }
+        
+        /// <summary>
+        /// Implicit cast from the data type.
+        /// </summary>
+        /// <param name="point">The point to cast.</param>
+        /// <returns>The value.</returns>
+        public static implicit operator DVec3D(Vec3D point)
+        {
+        	return new DVec3D(() => point.X, () => point.Y, () => point.Z);
+        }
 
+        /// <summary>
+        /// Implicit cast from the data type.
+        /// </summary>
+        /// <param name="point">The point to cast.</param>
+        /// <returns>The value.</returns>
+        public static implicit operator DVec3D(Point3D point)
+        {
+        	return new DVec3D(() => point.X, () => point.Y, () => point.Z);
+        }
+        
         /// <summary>
         /// Implicit cast from the data type.
         /// </summary>

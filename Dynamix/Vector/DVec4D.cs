@@ -154,6 +154,26 @@
         {
         	return this / Length();
         }
+        
+        /// <summary>
+        /// Implicit cast from the data type.
+        /// </summary>
+        /// <param name="point">The point to cast.</param>
+        /// <returns>The value.</returns>
+        public static implicit operator DVec4D(Vec4D point)
+        {
+        	return new DVec4D(() => point.X, () => point.Y, () => point.Z, () => point.W);
+        }
+        
+        /// <summary>
+        /// Implicit cast from the data type.
+        /// </summary>
+        /// <param name="point">The point to cast.</param>
+        /// <returns>The value.</returns>
+        public static implicit operator DVec4D(Point4D point)
+        {
+        	return new DVec4D(() => point.X, () => point.Y, () => point.Z, () => point.W);
+        }
 
         /// <summary>
         /// Implicit cast from the data type.

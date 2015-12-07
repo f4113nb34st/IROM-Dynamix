@@ -131,6 +131,16 @@
         /// <summary>
         /// Implicit cast from the data type.
         /// </summary>
+        /// <param name="point">The point to cast.</param>
+        /// <returns>The value.</returns>
+        public static implicit operator DPoint4D(Point4D point)
+        {
+        	return new DPoint4D(() => point.X, () => point.Y, () => point.Z, () => point.W);
+        }
+        
+        /// <summary>
+        /// Implicit cast from the data type.
+        /// </summary>
         /// <param name="val">The value to cast.</param>
         /// <returns>The point.</returns>
         public static implicit operator DPoint4D(DInt val)

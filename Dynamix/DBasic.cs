@@ -13,7 +13,7 @@
 		protected DBasic(Func<T> exp)
 		{
 			expression = exp;
-			lock(currentSource)
+			lock(sourceLock)
 			{
 				currentSource = this;
 				// disable once DoNotCallOverridableMethodsInConstructor

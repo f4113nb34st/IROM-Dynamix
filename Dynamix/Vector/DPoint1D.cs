@@ -64,6 +64,16 @@
         		}
         	}
         }
+        
+        /// <summary>
+        /// Implicit cast from the data type.
+        /// </summary>
+        /// <param name="point">The point to cast.</param>
+        /// <returns>The value.</returns>
+        public static implicit operator DPoint1D(Point1D point)
+        {
+        	return new DPoint1D(() => point.X);
+        }
 
         /// <summary>
         /// Implicit cast to the data type.

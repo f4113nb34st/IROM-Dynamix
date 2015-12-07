@@ -10,9 +10,11 @@
 	{
 		// disable once StaticFieldInGenericType
 		private static readonly Stack<DSource> sourceStack = new Stack<DSource>();
+		// disable once StaticFieldInGenericType
+		protected static object sourceLock = new object();
 		protected static DSource currentSource
 		{
-			get{return sourceStack.Peek();}
+			get{return ((sourceStack.Count > 0) ? sourceStack.Peek() : null);}
 			set
 			{
 				if(value == null) sourceStack.Pop();

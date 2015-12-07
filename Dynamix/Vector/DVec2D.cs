@@ -124,6 +124,26 @@
         	DDouble sin = DMath.Sin(theta);
         	return new DVec2D((X * cos) - (Y * sin), (X * sin) + (Y * cos));
         }
+        
+        /// <summary>
+        /// Implicit cast from the data type.
+        /// </summary>
+        /// <param name="point">The point to cast.</param>
+        /// <returns>The value.</returns>
+        public static implicit operator DVec2D(Vec2D point)
+        {
+        	return new DVec2D(() => point.X, () => point.Y);
+        }
+        
+        /// <summary>
+        /// Implicit cast from the data type.
+        /// </summary>
+        /// <param name="point">The point to cast.</param>
+        /// <returns>The value.</returns>
+        public static implicit operator DVec2D(Point2D point)
+        {
+        	return new DVec2D(() => point.X, () => point.Y);
+        }
 
         /// <summary>
         /// Implicit cast from the data type.

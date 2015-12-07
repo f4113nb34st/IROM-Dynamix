@@ -110,6 +110,16 @@
         /// <summary>
         /// Implicit cast from the data type.
         /// </summary>
+        /// <param name="point">The point to cast.</param>
+        /// <returns>The value.</returns>
+        public static implicit operator DPoint3D(Point3D point)
+        {
+        	return new DPoint3D(() => point.X, () => point.Y, () => point.Z);
+        }
+        
+        /// <summary>
+        /// Implicit cast from the data type.
+        /// </summary>
         /// <param name="val">The value to cast.</param>
         /// <returns>The point.</returns>
         public static implicit operator DPoint3D(DInt val)

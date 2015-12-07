@@ -17,12 +17,22 @@
 			}
 			set
 			{
-				foreach(Action listener in val.GetListeners())
-				{
-					value.Subscribe(listener);
-				}
+				T oldVal = val;
 				val = value;
+				if(oldVal != null)
+				{
+					foreach(Action listener in oldVal.GetListeners())
+					{
+						val.Subscribe(listener);
+						listener();
+					}
+				}
 			}
+		}
+		
+		public T GetValue()
+		{
+			return val;
 		}
 	}
 }
