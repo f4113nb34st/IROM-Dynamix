@@ -9,6 +9,9 @@
 	/// </summary>
 	public class Dynx<T> : Dynx
 	{
+		// disable once StaticFieldInGenericType
+		private static readonly bool IsValueType = typeof(T).IsValueType;
+		
 		/// <summary>
 		/// Current value storage.
 		/// </summary>
@@ -64,15 +67,20 @@
 		
 		public override void Update()
 		{
-			baseValue = baseExp();
-			lock(sourceLock)
+			T prev = baseValue;
+			if(baseExp != null)
+				baseValue = baseExp();
+			if(!IsValueType || !baseValue.Equals(prev))
 			{
-				currentSource = this;
-				foreach(Action listener in GetListeners())
+				lock(sourceLock)
 				{
-					listener();
+					currentSource = this;
+					foreach(Action listener in GetListeners())
+					{
+						listener();
+					}
+					currentSource = null;
 				}
-				currentSource = null;
 			}
 		}
 		
@@ -95,7 +103,7 @@
 	/// <summary>
 	/// Base non-generic class for Dynx variables.
 	/// </summary>
-	internal abstract class Dynx
+	public abstract class Dynx
 	{
 		//
 		//Parentage determination info
