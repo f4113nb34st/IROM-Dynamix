@@ -3,14 +3,32 @@
 	using System;
 	using System.Collections.Generic;
 	using System.Runtime.InteropServices;
+	using System.Threading;
+	using System.Linq;
+	using System.Linq.Expressions;
 	
 	/// <summary>
-	/// A generic dynamix variable of 
+	/// A generic dynamix variable.
 	/// </summary>
-	public class Dynx<T> : Dynx
+	public class Dynx<T> : Dynx where T : struct
 	{
-		// disable once StaticFieldInGenericType
-		private static readonly bool IsValueType = typeof(T).IsValueType;
+		//static testing for value type inequality, null if not valid
+		private static readonly Func<T, T, bool> NotEqual;
+		static Dynx()
+		{
+			try
+			{
+				ParameterExpression paramA = Expression.Parameter(typeof(T), "a");
+				ParameterExpression paramB = Expression.Parameter(typeof(T), "b");
+				NotEqual = Expression.Lambda<Func<T, T, bool>>(Expression.NotEqual(paramA, paramB), paramA, paramB).Compile();
+			}catch(InvalidOperationException)
+			{
+				NotEqual = null;
+			}catch(ArgumentException)
+			{
+				NotEqual = null;
+			}
+		}
 		
 		/// <summary>
 		/// Current value storage.
@@ -28,12 +46,16 @@
 		{
 			get
 			{
-				if(currentSource != null) Subscribe(currentSource.Update);
+				if(currentThread == Thread.CurrentThread)
+				{
+					currentParents.AddLast(this);
+				}
 				return baseValue;
 			}
 			set
 			{
-				Exp = () => value;
+				baseValue = value;
+				Exp = null;
 			}
 		}
 		
@@ -46,20 +68,39 @@
 			{
 				return baseExp;
 			}
-			protected set
+			set
 			{
+				foreach(Dynx dynx in GetParents())
+				{
+					dynx.Unsubscribe(UpdateListener);
+				}
 				baseExp = value;
+				foreach(Dynx dynx in GetParents())
+				{
+					dynx.Subscribe(UpdateListener, true);
+				}
 				Update();
 			}
 		}
 		
+		/// <summary>
+		/// Creates a new <see cref="Dynx{T}">Dynx</see> variable.
+		/// </summary>
 		public Dynx(){}
 		
+		/// <summary>
+		/// Creates a new <see cref="Dynx{T}">Dynx</see> variable with the given value.
+		/// </summary>
+		/// <param name="value">The value.</param>
 		public Dynx(T value)
 		{
 			Value = value;
 		}
 		
+		/// <summary>
+		/// Creates a new <see cref="Dynx{T}">Dynx</see> variable with the given expression value.
+		/// </summary>
+		/// <param name="exp">The expression.</param>
 		public Dynx(Func<T> exp)
 		{
 			Exp = exp;
@@ -70,33 +111,35 @@
 			T prev = baseValue;
 			if(baseExp != null)
 				baseValue = baseExp();
-			if(!IsValueType || !baseValue.Equals(prev))
+			if(baseExp == null || (NotEqual == null || NotEqual(baseValue, prev)))
 			{
-				lock(sourceLock)
+				foreach(Action listener in GetListeners())
 				{
-					currentSource = this;
-					foreach(Action listener in GetListeners())
-					{
-						listener();
-					}
-					currentSource = null;
+					listener();
 				}
 			}
 		}
 		
-		public static implicit operator T(Dynx<T> dynx)
+		/// <summary>
+		/// Returns an enumerator to this variable's current parents.
+		/// </summary>
+		/// <returns>The enumerator.</returns>
+		public IEnumerable<Dynx> GetParents()
 		{
-			return dynx.Value;
-		}
-		
-		public static implicit operator Dynx<T>(T value)
-		{
-			return new Dynx<T>(value);
-		}
-		
-		public static implicit operator Dynx<T>(Func<T> exp)
-		{
-			return new Dynx<T>(exp);
+			if(baseExp != null)
+			{
+				lock(parentLock)
+				{
+					currentThread = Thread.CurrentThread;
+					baseExp();
+					foreach(Dynx dynx in currentParents)
+					{
+						yield return dynx;
+					}
+					currentParents.Clear();
+					currentThread = null;
+				}
+			}
 		}
 	}
 	
@@ -107,35 +150,34 @@
 	{
 		//
 		//Parentage determination info
+		internal static object parentLock = new object();
+		internal static volatile Thread currentThread;
+		internal static LinkedList<Dynx> currentParents = new LinkedList<Dynx>();
 		//
-		private static readonly Stack<Dynx> sourceStack = new Stack<Dynx>();
-		internal static object sourceLock = new object();
-		internal static Dynx currentSource
+		//
+		
+		/// <summary>
+		/// Node in relation list.
+		/// </summary>
+		protected internal class Node<T>
 		{
-			get{return ((sourceStack.Count > 0) ? sourceStack.Peek() : null);}
-			set
-			{
-				if(value == null) sourceStack.Pop();
-				else              sourceStack.Push(value);
-			}
+			public Node<T> Next;
+			public T Value;
 		}
-		//
-		//
-		//
 		
 		/// <summary>
 		/// The root node of a linked list of weak references to listeners.
 		/// </summary>
-		protected internal HandleNode root = new HandleNode();
+		protected internal Node<GCHandle> childrenRoot;
 		
 		/// <summary>
-		/// Node in weak linked list.
+		/// Reference to our own update so GC is tied to this object, not the delegate created.
 		/// </summary>
-		protected internal class HandleNode
+		protected Action UpdateListener;
+		
+		protected Dynx()
 		{
-			internal static bool Remove = false;
-			public HandleNode Next;
-			public GCHandle Handle;
+			UpdateListener = Update;
 		}
 		
 		/// <summary>
@@ -144,15 +186,16 @@
 		public abstract void Update();
 		
 		/// <summary>
-		/// Add dependent to this source.
+		/// Adds a dependent to this source.
 		/// </summary>
 		/// <param name="a">The dependant.</param>
-		public void Subscribe(Action a)
+		/// <param name="weak">True if this is a weak reference.</param>
+		public void Subscribe(Action a, bool weak = false)
 		{
-			HandleNode node = new HandleNode();
-			node.Handle = GCHandle.Alloc(a, GCHandleType.Weak);
-			node.Next = root.Next;
-			root.Next = node;
+			Node<GCHandle> node = new Node<GCHandle>();
+			node.Value = GCHandle.Alloc(a, weak ? GCHandleType.Weak : GCHandleType.Normal);
+			node.Next = childrenRoot;
+			childrenRoot = node;
 		}
 		
 		/// <summary>
@@ -161,11 +204,21 @@
 		/// <param name="a">The dependant.</param>
 		public void Unsubscribe(Action a)
 		{
-			foreach(Action listener in GetListeners())
+			Node<GCHandle> prev = null;
+			for(Node<GCHandle> node = childrenRoot; node != null; 
+			    prev = node, node = node.Next)
 			{
-				if(listener == a)
+				Action value = node.Value.Target as Action;
+				if(value == null || value == a)
 				{
-					HandleNode.Remove = true;
+					if(node == childrenRoot)
+					{
+						childrenRoot = node.Next;
+					}else
+					{
+						prev.Next = node.Next;
+						node = prev;
+					}
 				}
 			}
 		}
@@ -176,24 +229,24 @@
 		/// <returns>The enumeration.</returns>
 		protected internal IEnumerable<Action> GetListeners()
 		{
-			HandleNode prev;
-			HandleNode node = root;
-			while(node.Next != null)
+			Node<GCHandle> prev = null;
+			for(Node<GCHandle> node = childrenRoot; node != null; 
+			    prev = node, node = node.Next)
 			{
-				prev = node;
-				node = node.Next;
-				Action value = node.Handle.Target as Action;
+				Action value = node.Value.Target as Action;
 				if(value == null)
 				{
-					prev.Next = node.Next;
+					if(node == childrenRoot)
+					{
+						childrenRoot = node.Next;
+					}else
+					{
+						prev.Next = node.Next;
+						node = prev;
+					}
 					continue;
 				}
-				HandleNode.Remove = false;
 				yield return value;
-				if(HandleNode.Remove)
-				{
-					prev.Next = node.Next;
-				}
 			}
 		}
 	}
