@@ -10,7 +10,7 @@
 	/// <summary>
 	/// A generic dynamix variable.
 	/// </summary>
-	public class Dynx<T> : Dynx where T : struct
+	public sealed class Dynx<T> : Dynx where T : struct
 	{
 		//static testing for value type inequality, null if not valid
 		private static readonly Func<T, T, bool> NotEqual;
