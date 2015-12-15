@@ -33,17 +33,17 @@
 		/// <summary>
 		/// Current value storage.
 		/// </summary>
-		protected T baseValue;
+		private T baseValue;
 		
 		/// <summary>
 		/// Current expression storage.
 		/// </summary>
-		protected Func<T> baseExp;
+		private Func<T> baseExp;
 		
 		/// <summary>
 		/// The root node of a linked list of filters.
 		/// </summary>
-		protected Node<Func<T, T>> filterRoot;
+		private Node<Func<T, T>> filterRoot;
 		
 		/// <summary>
 		/// The current value of this <see cref="Dynx{T}">Dynx</see> variable.
@@ -117,6 +117,10 @@
 			T prev = baseValue;
 			if(baseExp != null)
 				baseValue = baseExp();
+			for(var node = filterRoot; node != null; node = node.Next)
+			{
+				baseValue = node.Value(baseValue);
+			}
 			if(baseExp == null || (NotEqual == null || NotEqual(baseValue, prev)))
 			{
 				foreach(Action listener in GetListeners())
@@ -154,7 +158,7 @@
 		/// <param name="filter">The filter to add.</param>
 		public void AddFilter(Func<T, T> filter)
 		{
-			Node<Func<T, T>> node = new Node<Func<T, T>>();
+			var node = new Node<Func<T, T>>();
 			node.Value = filter;
 			node.Next = filterRoot;
 			filterRoot = node;
@@ -166,8 +170,8 @@
 		/// <param name="filter">The filter to remove.</param>
 		public void RemoveFilter(Func<T, T> filter)
 		{
-			Node<Func<T, T>> prev = null;
-			for(Node<Func<T, T>> node = filterRoot; node != null; 
+			var prev = filterRoot;
+			for(var node = filterRoot; node != null; 
 			    prev = node, node = node.Next)
 			{
 				if(node.Value == filter)
@@ -235,7 +239,7 @@
 		/// <param name="weak">True if this is a weak reference.</param>
 		public void Subscribe(Action a, bool weak = false)
 		{
-			Node<GCHandle> node = new Node<GCHandle>();
+			var node = new Node<GCHandle>();
 			node.Value = GCHandle.Alloc(a, weak ? GCHandleType.Weak : GCHandleType.Normal);
 			node.Next = childrenRoot;
 			childrenRoot = node;
@@ -247,8 +251,8 @@
 		/// <param name="a">The dependant.</param>
 		public void Unsubscribe(Action a)
 		{
-			Node<GCHandle> prev = null;
-			for(Node<GCHandle> node = childrenRoot; node != null; 
+			var prev = childrenRoot;
+			for(var node = childrenRoot; node != null; 
 			    prev = node, node = node.Next)
 			{
 				Action value = node.Value.Target as Action;
@@ -275,8 +279,8 @@
 		/// <returns>The enumeration.</returns>
 		protected internal IEnumerable<Action> GetListeners()
 		{
-			Node<GCHandle> prev = null;
-			for(Node<GCHandle> node = childrenRoot; node != null; 
+			var prev = childrenRoot;
+			for(var node = childrenRoot; node != null; 
 			    prev = node, node = node.Next)
 			{
 				Action value = node.Value.Target as Action;
