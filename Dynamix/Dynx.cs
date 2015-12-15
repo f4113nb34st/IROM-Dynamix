@@ -34,10 +34,16 @@
 		/// Current value storage.
 		/// </summary>
 		protected T baseValue;
+		
 		/// <summary>
 		/// Current expression storage.
 		/// </summary>
 		protected Func<T> baseExp;
+		
+		/// <summary>
+		/// The root node of a linked list of filters.
+		/// </summary>
+		protected Node<Func<T, T>> filterRoot;
 		
 		/// <summary>
 		/// The current value of this <see cref="Dynx{T}">Dynx</see> variable.
@@ -141,6 +147,43 @@
 				}
 			}
 		}
+		
+		/// <summary>
+		/// Adds a new filter.
+		/// </summary>
+		/// <param name="filter">The filter to add.</param>
+		public void AddFilter(Func<T, T> filter)
+		{
+			Node<Func<T, T>> node = new Node<Func<T, T>>();
+			node.Value = filter;
+			node.Next = filterRoot;
+			filterRoot = node;
+		}
+		
+		/// <summary>
+		/// Removes the given filter.
+		/// </summary>
+		/// <param name="filter">The filter to remove.</param>
+		public void RemoveFilter(Func<T, T> filter)
+		{
+			Node<Func<T, T>> prev = null;
+			for(Node<Func<T, T>> node = filterRoot; node != null; 
+			    prev = node, node = node.Next)
+			{
+				if(node.Value == filter)
+				{
+					if(node == filterRoot)
+					{
+						filterRoot = node.Next;
+					}else
+					{
+						prev.Next = node.Next;
+						node = prev;
+					}
+					break;
+				}
+			}
+		}
 	}
 	
 	/// <summary>
@@ -219,6 +262,9 @@
 						prev.Next = node.Next;
 						node = prev;
 					}
+					//if done, stop iterating
+					if(value == a)
+						break;
 				}
 			}
 		}
