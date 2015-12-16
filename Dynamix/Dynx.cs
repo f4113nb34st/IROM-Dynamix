@@ -264,6 +264,7 @@
 		/// DO NOT CALL MANUALLY unless you know what you are doing.
 		/// </summary>
 		/// <param name="dynx">The dependant.</param>
+		/// <param name="weak">True if this is a weak reference.</param>
 		public void Subscribe(Dynx dynx, bool weak = false)
 		{
 			Subscribe(dynx.UpdateListener, weak);
