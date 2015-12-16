@@ -241,8 +241,32 @@
 		{
 			var node = new Node<GCHandle>();
 			node.Value = GCHandle.Alloc(a, weak ? GCHandleType.Weak : GCHandleType.Normal);
-			node.Next = childrenRoot;
-			childrenRoot = node;
+			
+			//add to end of listener collection
+			if(childrenRoot == null) childrenRoot = node;
+			else
+			{
+				var prev = childrenRoot;
+				while(prev.Next != null)
+				{
+					prev = prev.Next;
+					//if(prev.Value == a)
+					//{
+						//return;
+					//}
+				}
+				prev.Next = node;
+			}
+		}
+		
+		/// <summary>
+		/// Adds a dependant Dynx var to this source. 
+		/// DO NOT CALL MANUALLY unless you know what you are doing.
+		/// </summary>
+		/// <param name="dynx">The dependant.</param>
+		public void Subscribe(Dynx dynx, bool weak = false)
+		{
+			Subscribe(dynx.UpdateListener, weak);
 		}
 		
 		/// <summary>
@@ -271,6 +295,16 @@
 						break;
 				}
 			}
+		}
+		
+		/// <summary>
+		/// Removes dependent Dynx var from this source.
+		/// DO NOT CALL MANUALLY unless you know what you are doing.
+		/// </summary>
+		/// <param name="dynx">The dependant.</param>
+		public void Unsubscribe(Dynx dynx)
+		{
+			Unsubscribe(dynx.UpdateListener);
 		}
 		
 		/// <summary>
