@@ -18,9 +18,15 @@
 		{
 			try
 			{
-				ParameterExpression paramA = Expression.Parameter(typeof(T), "a");
-				ParameterExpression paramB = Expression.Parameter(typeof(T), "b");
-				NotEqual = Expression.Lambda<Func<T, T, bool>>(Expression.NotEqual(paramA, paramB), paramA, paramB).Compile();
+				if(typeof(T).IsValueType || typeof(T) == typeof(string))
+				{
+					ParameterExpression paramA = Expression.Parameter(typeof(T), "a");
+					ParameterExpression paramB = Expression.Parameter(typeof(T), "b");
+					NotEqual = Expression.Lambda<Func<T, T, bool>>(Expression.NotEqual(paramA, paramB), paramA, paramB).Compile();
+				}else
+				{
+					NotEqual = null;
+				}
 			}catch(InvalidOperationException)
 			{
 				NotEqual = null;
