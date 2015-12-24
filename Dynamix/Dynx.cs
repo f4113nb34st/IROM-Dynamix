@@ -44,7 +44,7 @@
 		/// <summary>
 		/// Current expression storage.
 		/// </summary>
-		private Func<T> baseExp;
+		private Func<bool, T> baseExp;
 		
 		/// <summary>
 		/// The root node of a linked list of filters.
@@ -58,10 +58,7 @@
 		{
 			get
 			{
-				if(currentThread == Thread.CurrentThread)
-				{
-					currentParents.AddLast(this);
-				}
+				Ping();
 				return baseValue;
 			}
 			set
@@ -74,7 +71,7 @@
 		/// <summary>
 		/// The current expression for this <see cref="Dynx{T}">Dynx</see> variable.
 		/// </summary>
-		public Func<T> Exp
+		public Func<bool, T> Exp
 		{
 			get
 			{
@@ -113,16 +110,29 @@
 		/// Creates a new <see cref="Dynx{T}">Dynx</see> variable with the given expression value.
 		/// </summary>
 		/// <param name="exp">The expression.</param>
-		public Dynx(Func<T> exp)
+		public Dynx(Func<bool, T> exp)
 		{
 			Exp = exp;
+		}
+		
+		/// <summary>
+		/// Pings this <see cref="Dynx{T}">Dynx</see> variable, informing it of a dependant.
+		/// Used for manual test handling.
+		/// </summary>
+		public void Ping()
+		{
+			if(currentThread == Thread.CurrentThread)
+			{
+				currentParents.AddLast(this);
+			}
 		}
 		
 		public override void Update()
 		{
 			T prev = baseValue;
 			if(baseExp != null)
-				baseValue = baseExp();
+				//evaluate with test flag off
+				baseValue = baseExp(false);
 			for(var node = filterRoot; node != null; node = node.Next)
 			{
 				baseValue = node.Value(baseValue);
@@ -147,7 +157,8 @@
 				lock(parentLock)
 				{
 					currentThread = Thread.CurrentThread;
-					baseExp();
+					//call with test flag set
+					baseExp(true);
 					foreach(Dynx dynx in currentParents)
 					{
 						yield return dynx;
@@ -166,8 +177,23 @@
 		{
 			var node = new Node<Func<T, T>>();
 			node.Value = filter;
-			node.Next = filterRoot;
-			filterRoot = node;
+			
+			//add to end of filter collection
+			if(filterRoot == null) filterRoot = node;
+			else
+			{
+				var prev = filterRoot;
+				while(prev.Next != null)
+				{
+					prev = prev.Next;
+					//don't double subscribe
+					if(prev.Value == filter)
+					{
+						return;
+					}
+				}
+				prev.Next = node;
+			}
 		}
 		
 		/// <summary>
@@ -241,12 +267,12 @@
 		/// <summary>
 		/// Adds a dependent to this source.
 		/// </summary>
-		/// <param name="a">The dependant.</param>
+		/// <param name="listener">The dependant.</param>
 		/// <param name="weak">True if this is a weak reference.</param>
-		public void Subscribe(Action a, bool weak = false)
+		public void Subscribe(Action listener, bool weak = false)
 		{
 			var node = new Node<GCHandle>();
-			node.Value = GCHandle.Alloc(a, weak ? GCHandleType.Weak : GCHandleType.Normal);
+			node.Value = GCHandle.Alloc(listener, weak ? GCHandleType.Weak : GCHandleType.Normal);
 			
 			//add to end of listener collection
 			if(childrenRoot == null) childrenRoot = node;
@@ -256,10 +282,12 @@
 				while(prev.Next != null)
 				{
 					prev = prev.Next;
-					//if(prev.Value == a)
-					//{
-						//return;
-					//}
+					//don't double subscribe
+					if((prev.Value.Target as Action) == listener)
+					{
+						node.Value.Free();
+						return;
+					}
 				}
 				prev.Next = node;
 			}
@@ -295,6 +323,7 @@
 					}else
 					{
 						prev.Next = node.Next;
+						node.Value.Free();
 						node = prev;
 					}
 					//if done, stop iterating
@@ -333,6 +362,7 @@
 					}else
 					{
 						prev.Next = node.Next;
+						node.Value.Free();
 						node = prev;
 					}
 					continue;
