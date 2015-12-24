@@ -12,30 +12,6 @@
 	/// </summary>
 	public sealed class Dynx<T> : Dynx
 	{
-		//static testing for value type inequality, null if not valid
-		private static readonly Func<T, T, bool> NotEqual;
-		static Dynx()
-		{
-			try
-			{
-				if(typeof(T).IsValueType || typeof(T) == typeof(string))
-				{
-					ParameterExpression paramA = Expression.Parameter(typeof(T), "a");
-					ParameterExpression paramB = Expression.Parameter(typeof(T), "b");
-					NotEqual = Expression.Lambda<Func<T, T, bool>>(Expression.NotEqual(paramA, paramB), paramA, paramB).Compile();
-				}else
-				{
-					NotEqual = null;
-				}
-			}catch(InvalidOperationException)
-			{
-				NotEqual = null;
-			}catch(ArgumentException)
-			{
-				NotEqual = null;
-			}
-		}
-		
 		/// <summary>
 		/// Current value storage.
 		/// </summary>
@@ -43,13 +19,14 @@
 		
 		/// <summary>
 		/// Current expression storage.
+		/// If null, baseValue is treated as a constant.
 		/// </summary>
-		private Func<bool, T> baseExp;
+		private Func<T> baseExp;
 		
 		/// <summary>
-		/// The root node of a linked list of filters.
+		/// The array of filters.
 		/// </summary>
-		private Node<Func<T, T>> filterRoot;
+		private Func<T, T>[] filters = new Func<T, T>[0];
 		
 		/// <summary>
 		/// The current value of this <see cref="Dynx{T}">Dynx</see> variable.
@@ -58,20 +35,29 @@
 		{
 			get
 			{
-				Ping();
+				//if evaluating, add as subscriber
+				Dynx child;
+				currentChildren.TryGetValue(Thread.CurrentThread, out child);
+				if(child != null)
+				{
+					OnUpdateWeak += child.updateListener;
+				}
+				//return value
 				return baseValue;
 			}
 			set
 			{
-				baseValue = value;
-				Exp = null;
+				//to set as constant, set to dummy, then update and null out
+				baseExp = () => value;
+				Update();
+				baseExp = null;
 			}
 		}
 		
 		/// <summary>
 		/// The current expression for this <see cref="Dynx{T}">Dynx</see> variable.
 		/// </summary>
-		public Func<bool, T> Exp
+		public Func<T> Exp
 		{
 			get
 			{
@@ -79,16 +65,36 @@
 			}
 			set
 			{
-				foreach(Dynx dynx in GetParents())
-				{
-					dynx.Unsubscribe(UpdateListener);
-				}
 				baseExp = value;
-				foreach(Dynx dynx in GetParents())
-				{
-					dynx.Subscribe(UpdateListener, true);
-				}
 				Update();
+			}
+		}
+		
+		/// <summary>
+		/// Called to filter values for this <see cref="Dynx{T}">Dynx</see> variable.
+		/// Filters are called in the order subscribed with each output becoming the input of the next.
+		/// </summary>
+		public event Func<T, T> OnFilter
+		{
+			add
+			{
+				Func<T, T>[] newArray = new Func<T, T>[filters.Length + 1];
+				//copy old values
+				for(int i = 0; i < filters.Length; i++) newArray[i] = filters[i];
+				//add new value
+				newArray[newArray.Length - 1] = value;
+				//set array to new
+				filters = newArray;
+			}
+			remove
+			{
+				int index = Array.IndexOf(filters, value);
+				if(index == -1) return;
+				Func<T, T>[] newArray = new Func<T, T>[filters.Length - 1];
+				//copy values
+				for(int i = 0;         i < index;          i++) newArray[i] = filters[i];
+				for(int i = index + 1; i < filters.Length; i++) newArray[i - 1] = filters[i];
+				filters = newArray;
 			}
 		}
 		
@@ -110,265 +116,228 @@
 		/// Creates a new <see cref="Dynx{T}">Dynx</see> variable with the given expression value.
 		/// </summary>
 		/// <param name="exp">The expression.</param>
-		public Dynx(Func<bool, T> exp)
+		public Dynx(Func<T> exp)
 		{
 			Exp = exp;
 		}
 		
-		/// <summary>
-		/// Pings this <see cref="Dynx{T}">Dynx</see> variable, informing it of a dependant.
-		/// Used for manual test handling.
-		/// </summary>
-		public void Ping()
-		{
-			if(currentThread == Thread.CurrentThread)
-			{
-				currentParents.AddLast(this);
-			}
-		}
-		
 		public override void Update()
 		{
-			T prev = baseValue;
+			T newValue = baseValue;
+			
+			//refresh update listener to dispose of old parentage
+			updateListener = Update;
+			
+			//evaluate and filter with child set so we catch parents
+			currentChildren[Thread.CurrentThread] = this;
+			
+			//base evaluation
 			if(baseExp != null)
-				//evaluate with test flag off
-				baseValue = baseExp(false);
-			for(var node = filterRoot; node != null; node = node.Next)
 			{
-				baseValue = node.Value(baseValue);
+				newValue = baseExp();
 			}
-			if(baseExp == null || (NotEqual == null || NotEqual(baseValue, prev)))
+			//call filters
+			foreach(var filter in filters)
 			{
-				foreach(Action listener in GetListeners())
+				newValue = filter(newValue);
+			}
+			
+			//clear child
+			currentChildren.Remove(Thread.CurrentThread);
+			
+			//if changed, update baseValue and call listeners
+			if(!EqualityComparer<T>.Default.Equals(newValue, baseValue))
+			{
+				baseValue = newValue;
+				foreach(Action listener in updateListeners)
 				{
 					listener();
-				}
-			}
-		}
-		
-		/// <summary>
-		/// Returns an enumerator to this variable's current parents.
-		/// </summary>
-		/// <returns>The enumerator.</returns>
-		public IEnumerable<Dynx> GetParents()
-		{
-			if(baseExp != null)
-			{
-				lock(parentLock)
-				{
-					currentThread = Thread.CurrentThread;
-					//call with test flag set
-					baseExp(true);
-					foreach(Dynx dynx in currentParents)
-					{
-						yield return dynx;
-					}
-					currentParents.Clear();
-					currentThread = null;
-				}
-			}
-		}
-		
-		/// <summary>
-		/// Adds a new filter.
-		/// </summary>
-		/// <param name="filter">The filter to add.</param>
-		public void AddFilter(Func<T, T> filter)
-		{
-			var node = new Node<Func<T, T>>();
-			node.Value = filter;
-			
-			//add to end of filter collection
-			if(filterRoot == null) filterRoot = node;
-			else
-			{
-				var prev = filterRoot;
-				while(prev.Next != null)
-				{
-					prev = prev.Next;
-					//don't double subscribe
-					if(prev.Value == filter)
-					{
-						return;
-					}
-				}
-				prev.Next = node;
-			}
-		}
-		
-		/// <summary>
-		/// Removes the given filter.
-		/// </summary>
-		/// <param name="filter">The filter to remove.</param>
-		public void RemoveFilter(Func<T, T> filter)
-		{
-			var prev = filterRoot;
-			for(var node = filterRoot; node != null; 
-			    prev = node, node = node.Next)
-			{
-				if(node.Value == filter)
-				{
-					if(node == filterRoot)
-					{
-						filterRoot = node.Next;
-					}else
-					{
-						prev.Next = node.Next;
-						node = prev;
-					}
-					break;
 				}
 			}
 		}
 	}
 	
 	/// <summary>
-	/// Base non-generic class for Dynx variables.
+	/// Base non-generic class for <see cref="Dynx{T}">Dynx</see> variables.
 	/// </summary>
 	public abstract class Dynx
 	{
-		//
-		//Parentage determination info
-		internal static object parentLock = new object();
-		internal static volatile Thread currentThread;
-		internal static LinkedList<Dynx> currentParents = new LinkedList<Dynx>();
-		//
-		//
-		
 		/// <summary>
-		/// Node in relation list.
+		/// Stores the currently updating <see cref="Dynx{T}">Dynx</see> variable so parentage can be acquired.
+		/// <see cref="Dynx{T}">Dynx</see> variables referenced during the update automatically add this variable to their listeners.
 		/// </summary>
-		protected internal class Node<T>
-		{
-			public Node<T> Next;
-			public T Value;
-		}
+		internal static Dictionary<Thread, Dynx> currentChildren = new Dictionary<Thread, Dynx>();
 		
 		/// <summary>
 		/// The root node of a linked list of weak references to listeners.
 		/// </summary>
-		protected internal Node<GCHandle> childrenRoot;
+		internal WeakCollection<Action> updateListeners = new WeakCollection<Action>();
 		
 		/// <summary>
 		/// Reference to our own update so GC is tied to this object, not the delegate created.
 		/// </summary>
-		protected Action UpdateListener;
+		internal Action updateListener;
 		
-		protected Dynx()
+		/// <summary>
+		/// Called when the value for this <see cref="Dynx{T}">Dynx</see> variable changes.
+		/// </summary>
+		public event Action OnUpdate
 		{
-			UpdateListener = Update;
+			add
+			{
+				updateListeners.Add(value, false);
+			}
+			remove
+			{
+				updateListeners.Remove(value);
+			}
 		}
 		
 		/// <summary>
-		/// Reevaluates this variable.
+		/// Called when the value for this <see cref="Dynx{T}">Dynx</see> variable changes.
+		/// Weakly references the listener.
+		/// </summary>
+		public event Action OnUpdateWeak
+		{
+			add
+			{
+				updateListeners.Add(value, true);
+			}
+			//same as OnUpdate.remove, provided for symmetry
+			remove
+			{
+				updateListeners.Remove(value);
+			}
+		}
+		
+		~Dynx()
+		{
+			updateListeners.Dispose();
+		}
+		
+		/// <summary>
+		/// Re-evaluates this <see cref="Dynx{T}">Dynx</see> variable.
 		/// </summary>
 		public abstract void Update();
+	}
+	
+	/// <summary>
+	/// Node for a weak linked list.
+	/// </summary>
+	internal unsafe struct WeakNode
+	{
+		public GCHandle handle;
+		public WeakNode* next;
+	}
+	
+	/// <summary>
+	/// A linked list implementation with minimal memory footprint and automatic weak referencing.
+	/// </summary>
+	internal unsafe struct WeakCollection<T> : IDisposable, IEnumerable<T> where T : class
+	{
+		internal WeakNode* root;
+
+		public void Dispose()
+		{
+			//on dispose, free all handles
+			for(WeakNode* node = root; node != null; node = (*node).next)
+			{
+				(*node).handle.Free();
+			}
+		}
 		
 		/// <summary>
-		/// Adds a dependent to this source.
+		/// Adds the given value to the collection.
 		/// </summary>
-		/// <param name="listener">The dependant.</param>
-		/// <param name="weak">True if this is a weak reference.</param>
-		public void Subscribe(Action listener, bool weak = false)
+		/// <param name="value">The value.</param>
+		/// <param name="weak">True if the reference should be weak.</param>
+		public void Add(T value, bool weak = false)
 		{
-			var node = new Node<GCHandle>();
-			node.Value = GCHandle.Alloc(listener, weak ? GCHandleType.Weak : GCHandleType.Normal);
+			GCHandle handle = GCHandle.Alloc(value, weak ? GCHandleType.Weak : GCHandleType.Normal);
 			
-			//add to end of listener collection
-			if(childrenRoot == null) childrenRoot = node;
-			else
+			//first search for duplicates
+			WeakNode* last;
+			for(WeakNode* node = root; node != null; last = node, node = (*node).next)
 			{
-				var prev = childrenRoot;
-				while(prev.Next != null)
-				{
-					prev = prev.Next;
-					//don't double subscribe
-					if((prev.Value.Target as Action) == listener)
-					{
-						node.Value.Free();
-						return;
-					}
-				}
-				prev.Next = node;
+				//if we find duplicate, don't re-add
+				if((*node).handle == handle)
+					return;
 			}
+			
+			//add new node
+			WeakNode newNode = new WeakNode{handle = handle, next = null};
+			if(last != null) (*last).next = &newNode;
+			else			 root = &newNode;
 		}
 		
-		/// <summary>
-		/// Adds a dependant Dynx var to this source. 
-		/// DO NOT CALL MANUALLY unless you know what you are doing.
-		/// </summary>
-		/// <param name="dynx">The dependant.</param>
-		/// <param name="weak">True if this is a weak reference.</param>
-		public void Subscribe(Dynx dynx, bool weak = false)
+		public void Remove(T value)
 		{
-			Subscribe(dynx.UpdateListener, weak);
-		}
-		
-		/// <summary>
-		/// Removes dependent from this source.
-		/// </summary>
-		/// <param name="a">The dependant.</param>
-		public void Unsubscribe(Action a)
-		{
-			var prev = childrenRoot;
-			for(var node = childrenRoot; node != null; 
-			    prev = node, node = node.Next)
+			WeakNode* prev = null;
+			for(WeakNode* node = root; node != null; prev = node, node = (*node).next)
 			{
-				Action value = node.Value.Target as Action;
-				if(value == null || value == a)
+				GCHandle handle = (*node).handle;
+				T nodeValue = handle.Target as T;
+				//if value to remove or lost reference
+				if(nodeValue == value || nodeValue == null)
 				{
-					if(node == childrenRoot)
-					{
-						childrenRoot = node.Next;
-					}else
-					{
-						prev.Next = node.Next;
-						node.Value.Free();
-						node = prev;
-					}
-					//if done, stop iterating
-					if(value == a)
-						break;
+					//remove node
+					handle.Free();
+					if(prev != null) (*prev).next = (*node).next;
+					else 			 root = (*node).next; 
+					//if was value, we're done
+					if(nodeValue == value) return;
 				}
 			}
 		}
+
+		public IEnumerator<T> GetEnumerator(){return new WeakCollectionEnumerator<T>{collection = this, node = root};}
+		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator(){return GetEnumerator();}
+	}
+	
+	/// <summary>
+	/// Simple enumerator for WeakCollection.
+	/// </summary>
+	internal struct WeakCollectionEnumerator<T> : IEnumerator<T> where T : class
+	{
+		public WeakCollection<T> collection;
+		private WeakNode* prevNode;
+		public WeakNode* node;
+		private T nodeValue;
 		
-		/// <summary>
-		/// Removes dependent Dynx var from this source.
-		/// DO NOT CALL MANUALLY unless you know what you are doing.
-		/// </summary>
-		/// <param name="dynx">The dependant.</param>
-		public void Unsubscribe(Dynx dynx)
+		public bool MoveNext()
 		{
-			Unsubscribe(dynx.UpdateListener);
-		}
-		
-		/// <summary>
-		/// Returns an enumeration of listeners in this source.
-		/// </summary>
-		/// <returns>The enumeration.</returns>
-		protected internal IEnumerable<Action> GetListeners()
-		{
-			var prev = childrenRoot;
-			for(var node = childrenRoot; node != null; 
-			    prev = node, node = node.Next)
+			nodeValue = null;
+			//each iteration of the loop:
+			//node is the current node we are checking for return validity
+			//prevNode is the node preceding it in the collection
+			while(true)
 			{
-				Action value = node.Value.Target as Action;
-				if(value == null)
+				if(node == null) break;
+				
+				GCHandle handle = (*node).handle;
+				nodeValue = handle.Target as T;
+				if(nodeValue == null)
 				{
-					if(node == childrenRoot)
-					{
-						childrenRoot = node.Next;
-					}else
-					{
-						prev.Next = node.Next;
-						node.Value.Free();
-						node = prev;
-					}
-					continue;
-				}
-				yield return value;
+					handle.Free();
+					if(prevNode != null) (*prevNode).next = (*node).next;
+					else 			 	 collection.root = (*node).next; 
+					//advance
+					node = (*node).next;
+				}else break;
 			}
+			//advance for next time
+			//we do this here instead of the beginning so when node is initialized to first it gets checked
+			if(node != null)
+			{
+				prevNode = node;
+				node = (*node).next;
+			}
+			return nodeValue != null;
 		}
+		
+		public T Current{get{return nodeValue;}}
+		public void Dispose(){}
+		object System.Collections.IEnumerator.Current{get{return Current;}}
+		public void Reset(){throw new NotImplementedException();}
 	}
 }
