@@ -256,7 +256,7 @@
 			GCHandle handle = GCHandle.Alloc(value, weak ? GCHandleType.Weak : GCHandleType.Normal);
 			
 			//first search for duplicates
-			WeakNode* last;
+			WeakNode* last = null;
 			for(WeakNode* node = root; node != null; last = node, node = (*node).next)
 			{
 				//if we find duplicate, don't re-add
@@ -297,7 +297,7 @@
 	/// <summary>
 	/// Simple enumerator for WeakCollection.
 	/// </summary>
-	internal struct WeakCollectionEnumerator<T> : IEnumerator<T> where T : class
+	internal unsafe struct WeakCollectionEnumerator<T> : IEnumerator<T> where T : class
 	{
 		public WeakCollection<T> collection;
 		private WeakNode* prevNode;
