@@ -36,11 +36,14 @@
 		{
 			get
 			{
-				//if evaluating, add as subscriber
-				Dynx top = childStack.GetForCurrentThread().Top;
-				if(top != null)
+				if(updatingCount > 0)
 				{
-					updateListeners.Add(ref top.updateHandle, ref top.updateListener);
+					//if evaluating, add as subscriber
+					Dynx top = childStack.GetForCurrentThread().Top;
+					if(top != null)
+					{
+						updateListeners.Add(top.updateHandle, top.updateListener);
+					}
 				}
 				//return value
 				return baseValue;
@@ -137,32 +140,35 @@
 		/// </summary>
 		public void Update()
 		{
-			//create var for new value
-			T newValue = baseValue;
-			
-			//only evaluate if something might have changed
-			if(baseExp != null || filters.Length > 0)
+			lock(this)
 			{
-				//use a new set of parents
-				using(new ParentContext(this))
+				//create var for new value
+				T newValue = baseValue;
+				
+				//only evaluate if something might have changed
+				if(baseExp != null || filters.Length > 0)
 				{
-					//evaluate expression
-					if(baseExp != null)
+					//use a new set of parents
+					using(new ParentContext(this))
 					{
-						newValue = baseExp();
+						//evaluate expression
+						if(baseExp != null)
+						{
+							newValue = baseExp();
+						}
+						//filter value
+						newValue = Filter(newValue);
 					}
-					//filter value
-					newValue = Filter(newValue);
 				}
-			}
-			
-			//if changed or constant (since constant.Update is only called once), update baseValue and call listeners
-			if(!EqualityComparer<T>.Default.Equals(newValue, baseValue))
-			{
-				//set value to new
-				baseValue = newValue;
-				//update all listeners
-				NotifyListeners();
+				
+				//if changed or constant (since constant.Update is only called once), update baseValue and call listeners
+				if(!EqualityComparer<T>.Default.Equals(newValue, baseValue))
+				{
+					//set value to new
+					baseValue = newValue;
+					//update all listeners
+					NotifyListeners();
+				}
 			}
 		}
 		
@@ -171,18 +177,21 @@
 		/// </summary>
 		private void UpdateConstant()
 		{
-			//only evaluate if there are filters to influence it
-			if(filters.Length > 0)
+			lock(this)
 			{
-				//filter value with new set of parents
-				using(new ParentContext(this))
+				//only evaluate if there are filters to influence it
+				if(filters.Length > 0)
 				{
-					baseValue = Filter(baseValue);
+					//filter value with new set of parents
+					using(new ParentContext(this))
+					{
+						baseValue = Filter(baseValue);
+					}
 				}
+				
+				//guaranteed update
+				NotifyListeners();
 			}
-			
-			//guaranteed update
-			NotifyListeners();
 		}
 		
 		/// <summary>
@@ -245,12 +254,16 @@
 				//set child so we catch parents so we catch parents from evaluation and filtering
 				stack = childStack.GetForCurrentThread();
 				stack.Push(var);
+				//set updating
+				updatingCount++;
 			}
 			
 			public void Dispose()
 			{
 				//clear child
 				stack.Pop();
+				//set updating
+				updatingCount--;
 				//dispose old handle
 				oldHandle.Dispose();
 			}
@@ -262,6 +275,13 @@
 	/// </summary>
 	public abstract class Dynx
 	{
+		/// <summary>
+		/// Simple number that marks when we are updating. Allows for earlier return when not.
+		/// Increments by one per stack element. Decrements at end.
+		/// One variable for all threads, but not volatile, because thread caching would actually help us.
+		/// </summary>
+		internal static int updatingCount = 0;
+		
 		/// <summary>
 		/// Stores the queue of listeners awaiting updates. 
 		/// All <see cref="Dynx{T}">Dynx</see> variables add their listeners to this collection.
@@ -277,7 +297,7 @@
 		/// <summary>
 		/// The root node of a linked list of weak references to listeners.
 		/// </summary>
-		internal ListenerCollection<Action> updateListeners = new ListenerCollection<Action>(/*dummy*/false);
+		internal ListenerCollection<Action> updateListeners = new ListenerCollection<Action>();
 		
 		/// <summary>
 		/// Reference to our own update so GC is tied to this object, not the delegate created.
