@@ -4,7 +4,7 @@
 	using System.Collections.Generic;
 	
 	/// <summary>
-	/// A simple thread-safe collection of weakly-referenced values. Does not allow duplicates or null values.
+	/// A simple thread-unsafe collection of weakly-referenced values. Does not allow duplicates or null values.
 	/// Fast add and iteration. Minimalistic memory footprint.
 	/// Custom-made for the listener collections of <see cref="Dynx{T}">Dynx</see>.
 	/// 
@@ -20,51 +20,12 @@
 		{
 			public WeakHandle<T> Handle;
 			public Node Next;
-			public Node Prev;
 		}
 		
 		/// <summary>
-		/// The root node. Not actually part of the collection.
+		/// The root node.
 		/// </summary>
-		private readonly Node root;
-		
-		internal ListenerCollection(bool dummy)
-		{
-			root = new Node();
-			root.Next = root;
-			root.Prev = root;
-		}
-		
-		/// <summary>
-		/// Inserts the given node between the given prev and next.
-		/// </summary>
-		/// <param name="node">The new node.</param>
-		/// <param name="prev">The previous node.</param>
-		/// <param name="next">The new node.</param>
-		private void Insert(Node node, Node prev, Node next)
-		{
-			//lock to ensure atomic
-			lock(root)
-			{
-				node.Prev = prev;
-				node.Next = next;
-				prev.Next = next.Prev = node;
-			}
-		}
-		
-		/// <summary>
-		/// Removes the given <see cref="Node"/> from the collection.
-		/// </summary>
-		/// <param name="node">The node to remove.</param>
-		private void Remove(Node node)
-		{
-			//lock to ensure atomic
-			lock(root)
-			{
-				node.Prev.Next = node.Next;
-				node.Next.Prev = node.Prev;
-			}
-		}
+		private Node root;
 		
 		/// <summary>
 		/// Adds the given value to the back of the collection.
@@ -73,9 +34,11 @@
 		/// <param name="weak">True if the reference should be weak.</param>
 		public void Add(T value, bool weak = false)
 		{
+			Node node = root;
+			Node prev = null;
 			T nodeValue;
 			//first search for duplicates (and remove lost references while we're at it)
-			for(Node node = root.Next; node != root; node = node.Next)
+			while(node != null)
 			{
 				nodeValue = node.Handle.Value;
 				//if we find duplicate, don't re-add
@@ -83,12 +46,36 @@
 					return;
 				//if lost reference, remove
 				if(nodeValue == null)
-					Remove(node);
+				{
+					//move next
+					node = node.Next;
+					//if start
+					if(prev == null)
+					{
+						//update root
+						root = node;
+					}else
+					{
+						//update prev next
+						prev.Next = node;
+					}
+					//skip move next
+					continue;
+				}
+				//move to next node
+				prev = node;
+				node = node.Next;
 			}
 			
 			//add new node to end
 			Node newNode = new Node{Handle = new WeakHandle<T>(value, weak)};
-			Insert(newNode, root.Prev, root);
+			if(prev != null)
+			{
+				prev.Next = newNode;
+			}else
+			{
+				root = newNode;
+			}
 		}
 		
 		/// <summary>
@@ -97,11 +84,13 @@
 		/// </summary>
 		/// <param name="handle">The handle to add.</param>
 		/// <param name="value">The value the handle points to. We could get this from the handle itself, but it is faster to pass it.</param>
-		public void Add(ref WeakHandle<T> handle, ref T value)
+		public void Add(WeakHandle<T> handle, T value)
 		{
+			Node node = root;
+			Node prev = null;
 			T nodeValue;
 			//first search for duplicates (and remove lost references while we're at it)
-			for(Node node = root.Next; node != root; node = node.Next)
+			while(node != null)
 			{
 				nodeValue = node.Handle.Value;
 				//if we find duplicate, steal entry for new handle
@@ -112,13 +101,32 @@
 				}
 				//if lost reference, remove
 				if(nodeValue == null)
-					Remove(node);
+				{
+					//move next
+					node = node.Next;
+					//if start
+					if(prev == null)
+					{
+						//update root
+						root = node;
+					}else
+					{
+						//update prev next
+						prev.Next = node;
+					}
+					//skip move next
+					continue;
+				}
+				//move to next node
+				prev = node;
+				node = node.Next;
 			}
 			//when a parent is iterating listeners, calls child update
 			//that update creates and subscribes new listener
 			//add to beginning so the new listener is not called in that iteration
 			Node newNode = new Node{Handle = handle};
-			Insert(newNode, root, root.Next);
+			newNode.Next = root;
+			root = newNode;
 		}
 		
 		/// <summary>
@@ -127,29 +135,41 @@
 		/// <param name="value">The value to remove.</param>
 		public void Remove(T value)
 		{
-			for(Node node = root.Next; node != root; node = node.Next)
+			Node node = root;
+			Node prev = null;
+			T nodeValue;
+			while(node != null)
 			{
-				T nodeValue = node.Handle.Value;
-				//if value to remove
-				if(nodeValue == value)
+				nodeValue = node.Handle.Value;
+				//if value to remove or lost reference
+				if(nodeValue == value || nodeValue == null)
 				{
-					Remove(node);
-					return;
+					//move next
+					node = node.Next;
+					//if start
+					if(prev == null)
+					{
+						//update root
+						root = node;
+					}else
+					{
+						//update prev next
+						prev.Next = node;
+					}
+					//if lost reference continue, else done
+					if(nodeValue == null) continue;
+					else return;
 				}
-				//if lost reference
-				if(nodeValue == null)
-					Remove(node);
 			}
 		}
 
 		public IEnumerator<T> GetEnumerator()
 		{
-			return new ListenerEnumerator{root = root, node = root};
+			return new ListenerEnumerator{node = root};
 		}
 		
 		internal struct ListenerEnumerator : IEnumerator<T>
 		{
-			public Node root;
 			public Node node;
 			private T nodeValue;
 			
@@ -157,23 +177,20 @@
 			
 			public bool MoveNext()
 			{
+				Node prev = node;
 				while(true)
 				{
-					node = node.Next;
-					if(node == root) return false;
+					if(node == null) return false;
 					nodeValue = node.Handle.Value;
 					if(nodeValue != null)
 					{
+						//move for next time
+						node = node.Next;
 						return true;
 					}else
 					{
 						//remove node
-						//lock to ensure atomic
-						lock(root)
-						{
-							node.Prev.Next = node.Next;
-							node.Next.Prev = node.Prev;
-						}
+						prev.Next = node = node.Next;
 					}
 				}
 			}
