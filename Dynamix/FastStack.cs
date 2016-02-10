@@ -6,7 +6,7 @@
 	/// A simple collection of values. Allows duplicates.
 	/// Fast add and iteration. Minimalistic memory footprint.
 	/// First in, Last out access.
-	/// Custom-made for the thread-specific stacks of <see cref="ChildStack{T}">ChildStack</see>.
+	/// Custom-made for the thread-specific child stacks of <see cref="Dynx{T}">Dynx</see>.
 	/// 
 	/// NOTE: Linked-list-backed because we need extremely fast push and pop.
 	/// Memory overhead of linked list is negligable because it is used in a stack context.
