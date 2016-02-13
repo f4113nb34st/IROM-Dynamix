@@ -56,7 +56,7 @@
 					}
 				}
 				
-				//# Dynx Test 3
+				//# Dynx Test 4
 				{
 					for(int i = -range; i <= range; i++)
 					for(int j = -range; j <= range; j++)
@@ -74,7 +74,7 @@
 					}
 				}
 				
-				//# Dynx Test 4
+				//# Dynx Test 5
 				{
 					for(int i = -range; i <= range; i++)
 					for(int j = -range; j <= range; j++)
@@ -93,7 +93,7 @@
 					}
 				}
 				
-				//# Dynx Test 5
+				//# Dynx Test 6
 				{
 					Dynx<int> d1 = new Dynx<int>();
 					Dynx<int> d2 = new Dynx<int>();
@@ -102,10 +102,10 @@
 					GCHandle h2 = GCHandle.Alloc(d2, GCHandleType.Weak);
 					d2 = null;
 					GC.Collect();
-					if(h2.Target != null) Console.WriteLine("Warning: Test 5 Failed");
+					if(h2.Target != null) Console.WriteLine("Warning: Test 6 Failed");
 				}
 				
-				//# Dynx Test 6
+				//# Dynx Test 7
 				{
 					const int size = 1000000;
 					const int changes = 10;
@@ -123,7 +123,7 @@
 					GC.Collect();
 					long mem = GC.GetTotalMemory(true);
 					
-					Console.WriteLine("Test 6: Part 1 Start");
+					Console.WriteLine("Test 7: Part 1 Start");
 					watch.Start();
 					
 					tests[0] = new Dynx<int>(0);
@@ -135,9 +135,9 @@
 					}
 					
 					watch.Stop();
-					Console.WriteLine("Test 6: " + watch.ElapsedMilliseconds + "ms");
+					Console.WriteLine("Test 7: " + watch.ElapsedMilliseconds + "ms");
 					
-					Console.WriteLine("Test 6: Part 2 Start");
+					Console.WriteLine("Test 7: Part 2 Start");
 					watch.Restart();
 					for(int i = 0; i < changes; i++)
 					{
@@ -146,13 +146,13 @@
 					}
 					
 					watch.Stop();
-					Console.WriteLine("Test 6: " + watch.ElapsedMilliseconds + "ms");
-					Console.WriteLine("Test 6: " + ((changes * size) / watch.ElapsedMilliseconds) + " updates/ms");
+					Console.WriteLine("Test 7: " + watch.ElapsedMilliseconds + "ms");
+					Console.WriteLine("Test 7: " + ((changes * size) / watch.ElapsedMilliseconds) + " updates/ms");
 					
 					GC.Collect();
 					mem = GC.GetTotalMemory(true) - mem;
 					
-					Console.WriteLine("Test 6: Memsize: " + (mem / size));
+					Console.WriteLine("Test 7: Word Memsize: " + (((mem / size) - 4) / IntPtr.Size));
 				}
 			}catch(Exception e)
 			{
