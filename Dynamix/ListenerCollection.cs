@@ -160,6 +160,9 @@
 					if(nodeValue == null) continue;
 					else return;
 				}
+				//move to next node
+				prev = node;
+				node = node.Next;
 			}
 		}
 
