@@ -95,14 +95,25 @@
 				
 				//# Dynx Test 6
 				{
-					Dynx<int> d1 = new Dynx<int>();
-					Dynx<int> d2 = new Dynx<int>();
-					d1.Value = 0;
-					d2.Exp = () => d1.Value + 1;
-					GCHandle h2 = GCHandle.Alloc(d2, GCHandleType.Weak);
-					d2 = null;
+					object dummy = new object();
+					GCHandle h1 = GCHandle.Alloc(dummy, GCHandleType.Weak);
+					dummy = null;
 					GC.Collect();
-					if(h2.Target != null) Console.WriteLine("Warning: Test 6 Failed");
+					//only test in Release mode with no debugger. Thus, check with dummy object first.
+					if(h1.Target == null)
+					{
+						Dynx<int> d1 = new Dynx<int>();
+						Dynx<int> d2 = new Dynx<int>();
+						d1.Value = 0;
+						d2.Exp = () => d1.Value + 1;
+						GCHandle h2 = GCHandle.Alloc(d2, GCHandleType.Weak);
+						d2 = null;
+						GC.Collect();
+						if(h2.Target != null) Console.WriteLine("Warning: Test 6 Failed. Target value: " + (h2.Target as Dynx<int>).Value);
+					}else
+					{
+						Console.WriteLine("Warning: Debug mode or debugger active. Test 6 cannot be performed.");
+					}
 				}
 				
 				//# Dynx Test 7
