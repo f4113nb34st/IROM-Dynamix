@@ -142,6 +142,9 @@
 		{
 			lock(this)
 			{
+				//call preUpdateListeners
+				foreach(Action listener in preUpdates) listener();
+				
 				//create var for new value
 				T newValue = baseValue;
 				
@@ -161,7 +164,7 @@
 					}
 				}
 				
-				//if changed or constant (since constant.Update is only called once), update baseValue and call listeners
+				//if changed, update baseValue and call listeners
 				if(!EqualityComparer<T>.Default.Equals(newValue, baseValue))
 				{
 					//set value to new
@@ -169,16 +172,22 @@
 					//update all listeners
 					NotifyListeners();
 				}
+				
+				//call postUpdateListeners
+				foreach(Action listener in postUpdates) listener();
 			}
 		}
 		
 		/// <summary>
-		/// Re-evaluates this <see cref="Dynx{T}">Dynx</see> variable. Forces an update because constant initial evaluations report false negatives.
+		/// Re-evaluates this <see cref="Dynx{T}">Dynx</see> variable. Forces an update because constant evaluations report false negatives.
 		/// </summary>
 		private void UpdateConstant()
 		{
 			lock(this)
 			{
+				//call preUpdateListeners
+				foreach(Action listener in preUpdates) listener();
+				
 				//only evaluate if there are filters to influence it
 				if(filters.Length > 0)
 				{
@@ -191,6 +200,9 @@
 				
 				//guaranteed update
 				NotifyListeners();
+				
+				//call postUpdateListeners
+				foreach(Action listener in postUpdates) listener();
 			}
 		}
 		
@@ -295,7 +307,7 @@
 		internal static ThreadLocalCollection<FastStack<Dynx>> childStack = new ThreadLocalCollection<FastStack<Dynx>>(/*dummy*/false);
 		
 		/// <summary>
-		/// The root node of a linked list of weak references to listeners.
+		/// The linked list of weak/normal references to listeners.
 		/// </summary>
 		internal ListenerCollection<Action> updateListeners = new ListenerCollection<Action>();
 		
@@ -305,9 +317,19 @@
 		internal Action updateListener;
 		
 		/// <summary>
-		/// Reference our current update handle, so it can be invalidated instantly.
+		/// Reference our current update handle, so it can be invalidated quickly.
 		/// </summary>
 		internal WeakHandle<Action> updateHandle;
+		
+		/// <summary>
+		/// The array of pre update listeners.
+		/// </summary>
+		internal Action[] preUpdates = new Action[0];
+		
+		/// <summary>
+		/// The array of post update listeners.
+		/// </summary>
+		internal Action[] postUpdates = new Action[0];
 		
 		/// <summary>
 		/// Called when the value for this <see cref="Dynx{T}">Dynx</see> variable changes.
@@ -338,6 +360,45 @@
 			remove
 			{
 				updateListeners.Remove(value);
+			}
+		}
+		
+		/// <summary>
+		/// Called before the value for this <see cref="Dynx{T}">Dynx</see> variable is updated.
+		/// </summary>
+		public event Action OnPreUpdate
+		{
+			add
+			{
+				//add value
+				using(ArrayUtil.Lock(ref preUpdates))
+					ArrayUtil.Add(ref preUpdates, value);
+			}
+			remove
+			{
+				//remove value
+				using(ArrayUtil.Lock(ref preUpdates))
+				    ArrayUtil.Remove(ref preUpdates, value);
+			}
+		}
+		
+		/// <summary>
+		/// Called after the value for this <see cref="Dynx{T}">Dynx</see> variable is updated.
+		/// Called even if the value doesn't change.
+		/// </summary>
+		public event Action OnPostUpdate
+		{
+			add
+			{
+				//add value
+				using(ArrayUtil.Lock(ref postUpdates))
+					ArrayUtil.Add(ref postUpdates, value);
+			}
+			remove
+			{
+				//remove value
+				using(ArrayUtil.Lock(ref postUpdates))
+				    ArrayUtil.Remove(ref postUpdates, value);
 			}
 		}
 	}
